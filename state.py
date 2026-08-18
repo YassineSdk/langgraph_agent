@@ -6,13 +6,22 @@ from langgraph.graph.message import add_messages
 
 
 class IntentClassifier(BaseModel):
-    message_intent: Literal["chat", "knowledge", "code"] = Field(
+    message_intent: Literal["chat", "knowledge", "websearch"] = Field(
         ...,
         description="Classify the user task.",
-    )
+        )
 
 
 class State(TypedDict):
     messages: Annotated[list, add_messages]
     message_intent: str | None
     approved: bool
+    search_query : str | None 
+
+
+class SearchQuery(BaseModel):
+    search_query:str = Field(
+        ...,
+        description="An optimised query for a web search engine"
+    )
+

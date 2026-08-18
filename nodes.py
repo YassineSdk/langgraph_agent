@@ -1,10 +1,15 @@
-
-from state import State
-from utils import read_prompts, Retrieve_knowledge
+from state import *
+from utils import *
 from rich.console import Console
 from langgraph.types import interrupt
+from langchain_core.messages import SystemMessage
+from dotenv import load_dotenv, find_dotenv
+from tavily import TavilyClient
+import os
 
 C = Console()
+
+load_dotenv(find_dotenv(".env"))
 
 def prompt_llm_chat(llm, state: State):
 
@@ -16,8 +21,6 @@ def prompt_llm_chat(llm, state: State):
 
         response = llm.invoke(messages)
     return {"messages": [response]}
-
-
 
 
 def prompt_llm_rag(llm, state: State):
@@ -37,7 +40,7 @@ def prompt_llm_rag(llm, state: State):
                 }
             ]
         }
-    with C.status("[green][RAG] thinking ...."):
+    with C.status("[green][RAG] Searching docs ...."):
         query = state["messages"][-1].content
         docs = Retrieve_knowledge(query)
 
@@ -75,7 +78,7 @@ def prompt_llm_code(llm, state: State):
         response = llm.invoke(messages)
     return {"messages": [response]}
 
-def prompt_llm_web_search(query,max_results=10):
+def prompt_llm_web_search(llm,state:State,max_results=10):
     """
     this function takes a query and search it in the web via an API called
     tavily , a web search API that returns results
@@ -87,14 +90,16 @@ def prompt_llm_web_search(query,max_results=10):
             { "url": .....,
             "title": .....,
             "content": .....,
-            "score":........,
+            "score":........,                   
             "raw_content":......,
             },
         }
     """
-    with console.status("[green] searching the web ... [green ]"):
+    key = os.getenv("Tavily_APIKEY")
+    opm_query = search_rewriter(llm,state)
+    with C.status(f"[green] searching for {opm_query} ... [green ]") as status:
 
-        if not query:
+        if not opm_query:
             raise ValueError(
                 "the query is empty"
             )
@@ -105,7 +110,7 @@ def prompt_llm_web_search(query,max_results=10):
 
         Tav_client = TavilyClient(api_key=key)
         response = Tav_client.search(
-            query=query,
+            query=opm_query,
             search_depth="advanced",
             max_results=max_results,
             include_domains = None,
@@ -119,13 +124,60 @@ def prompt_llm_web_search(query,max_results=10):
             "linkedin.com"
             ]
         )
-
+        status.update("[yellow]Processing search results...[/yellow]")
         if response is None :
+            C.print("[red] web search ended [red]")
             raise ValueError('the Response is None')
-            console.print("[red] web search ended [red]")
 
-        console.print("[green] web search ended [green]")
-        return {
+        results= {
             "answer": response.get("answer"),
             "results":response.get("results",[])
         }
+
+        messages = [
+            {
+                "role": "system",
+                "content": read_prompts("web_search_prompt.yaml")
+            },
+            {
+                "role": "user",
+                "content": f"""
+        Context:
+        {results}
+
+        Question:
+        {opm_query}
+        """
+            }
+        ]
+        llm_response = llm.invoke(messages)
+    C.print("[bold green]✓ Web search completed[/bold green]")
+    return {"messages": [llm_response]}
+
+
+
+def search_rewriter(llm,state:State):
+    messages = state["messages"][-1]
+
+    prompt = """
+    You are a web search query optimizer.
+
+    Convert the user's request into a concise, precise search query
+    that will retrieve the most relevant information from the web.
+
+    Rules:
+    - Keep the original intent.
+    - Include important entities, dates, locations, or technical terms.
+    - Remove conversational filler.
+    - Do not answer the user's question.
+    - Return only the optimized search query.
+    """
+
+    result = llm.invoke(
+        [
+        SystemMessage(content=prompt),
+        messages
+        ]
+    )
+    return result.content.strip()
+
