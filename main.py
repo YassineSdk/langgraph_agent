@@ -50,8 +50,6 @@ graph_builder = StateGraph(State)
 graph_builder.add_node("classifier", classify_intent)
 graph_builder.add_node("chat_agent", lambda state: prompt_llm_chat(llm, state))
 graph_builder.add_node("RAG_agent", lambda state: prompt_llm_rag(llm, state))
-graph_builder.add_node("Coding_agent", lambda state: prompt_llm_code(llm, state))
-graph_builder.add_node("search_query_agent",lambda state: prompt_llm_search_query(llm,state))
 graph_builder.add_node("web_search_agent",lambda state: prompt_llm_web_search(llm, state))
 
 graph_builder.add_edge(START, "classifier")
@@ -64,7 +62,6 @@ graph_builder.add_conditional_edges(
     {
         "chat": "chat_agent",
         "knowledge": "RAG_agent",
-        "code": "Coding_agent",
         "websearch":"web_search_agent"
     },
 )
@@ -74,7 +71,6 @@ graph_builder.add_conditional_edges(
 
 graph_builder.add_edge("chat_agent", END)
 graph_builder.add_edge("RAG_agent", END)
-graph_builder.add_edge("Coding_agent", END)
 graph_builder.add_edge("web_search_agent",END)
 
 checkpoint = InMemorySaver()
