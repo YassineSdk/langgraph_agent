@@ -19,7 +19,9 @@ C = Console()
 load_dotenv(find_dotenv(".env"))
 
 
-llm = init_chat_model("groq:openai/gpt-oss-120b")
+llm = init_chat_model(
+    "groq:openai/gpt-oss-120b"
+    )
 
 TRACING=os.getenv("LANGSMITH_TRACING")
 PROJECT=os.getenv("LANGSMITH_PROJECT")
