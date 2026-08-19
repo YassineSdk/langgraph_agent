@@ -21,6 +21,9 @@ load_dotenv(find_dotenv(".env"))
 
 llm = init_chat_model("groq:openai/gpt-oss-120b")
 
+TRACING=os.getenv("LANGSMITH_TRACING")
+PROJECT=os.getenv("LANGSMITH_PROJECT")
+API_KEY=os.getenv("LANGSMITH_API_KEY") 
 
 def classify_intent(state: State):
     structured_llm = llm.with_structured_output(IntentClassifier,

@@ -12,6 +12,7 @@ dependencies = [
     "langchain-mcp-adapters>=0.3.2",
     "langchain-text-splitters>=1.1.2",
     "langgraph>=1.2.11",
+    "langsmith>=0.11.0",
     "prompt-toolkit>=3.0.53",
     "pydantic>=2.13.4",
     "pyyaml>=6.0.3",

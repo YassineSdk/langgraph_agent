@@ -19,9 +19,3 @@ class State(TypedDict):
     search_query : str | None 
 
 
-class SearchQuery(BaseModel):
-    search_query:str = Field(
-        ...,
-        description="An optimised query for a web search engine"
-    )
-
