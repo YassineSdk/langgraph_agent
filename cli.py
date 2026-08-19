@@ -49,8 +49,9 @@ def show_banner():
     tools.append("  Retrieve information from documents\n")
     tools.append("  and answer using relevant context\n\n")
 
-    tools.append("● code\n", style="bold")
-    tools.append("  Generate, explain and debug code")
+    tools.append("● Web search\n", style="bold")
+    tools.append("  Performs websearch \n" 
+                "   answer using relevant context\n\n")
 
     # MAIN TWO-COLUMN TABLE
     content = Table.grid(
