@@ -159,7 +159,7 @@ def prompt_llm_web_search(llm,state:State,max_results=10):
 def search_rewriter(llm,state:State):
     messages = state["messages"][-3:]
 
-        prompt = """
+    prompt = """
     You are a web search query optimizer.
 
     The conversation messages below contain recent context.
