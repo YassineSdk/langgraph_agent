@@ -157,26 +157,40 @@ def prompt_llm_web_search(llm,state:State,max_results=10):
 
 
 def search_rewriter(llm,state:State):
-    messages = state["messages"][-1]
+    messages = state["messages"][-3:]
 
-    prompt = """
+        prompt = """
     You are a web search query optimizer.
 
-    Convert the user's request into a concise, precise search query
-    that will retrieve the most relevant information from the web.
+    The conversation messages below contain recent context.
+    The LAST user message is the user's current information need.
+
+    Rewrite the user's current request into a concise, precise
+    search query that can retrieve the most relevant information
+    from the web.
+
+    Use previous messages only to resolve references such as:
+    - "it"
+    - "this"
+    - "there"
+    - "that"
+    - "the accommodation"
+    - "the company"
+    - "this requirement"
 
     Rules:
-    - Keep the original intent.
-    - Include important entities, dates, locations, or technical terms.
+    - Preserve the user's original intent.
+    - Use relevant context from previous messages.
+    - Include important entities, dates, locations, and technical terms.
     - Remove conversational filler.
-    - Do not answer the user's question.
-    - Return only the optimized search query.
+    - Do not answer the question.
+    - Do not add information that is not supported by the conversation.
+    Return ONLY the optimized search query.
     """
-
     result = llm.invoke(
         [
         SystemMessage(content=prompt),
-        messages
+        *messages
         ]
     )
     return result.content.strip()
