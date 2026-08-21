@@ -24,59 +24,35 @@ def prompt_llm_chat(llm, state: State):
 
 
 def prompt_llm_rag(llm, state: State):
+    query = state["messages"][-1].content
+    filename = state["filename"]
+    docs = Retrieve_knowledge(query,filename)
 
-    decision = interrupt(
-        {
-            "type":"rag_approval",
-            "message":"The agent wants to use the RAG system. This may be an expensive operation. Do you want to continue?"
-        }
+    context = "\n\n".join(
+        doc.page_content
+        for doc in docs
     )
-    if decision != "yes" :
-        return {
-            "messages":[
-                {
-                    "role":"assistant",
-                    "content":"RAG search cancelled by the user."
-                }
-            ]
+
+    messages = [
+        {
+            "role": "system",
+            "content": read_prompts("rag_prompt.yaml")
+        },
+        {
+            "role": "user",
+            "content": f"""
+    Context:
+    {context}
+
+    Question:
+    {query}
+    """
         }
-    with C.status("[green][RAG] Searching docs ...."):
-        query = state["messages"][-1].content
-        docs = Retrieve_knowledge(query)
-
-        context = "\n\n".join(
-            doc.page_content
-            for doc in docs
-        )
-
-        messages = [
-            {
-                "role": "system",
-                "content": read_prompts("rag_prompt.yaml")
-            },
-            {
-                "role": "user",
-                "content": f"""
-        Context:
-        {context}
-
-        Question:
-        {query}
-        """
-            }
-        ]
-        response = llm.invoke(messages)
+    ]
+    response = llm.invoke(messages)
 
     return {"messages": [response]}
 
-
-def prompt_llm_code(llm, state: State):
-    with C.status("[green][Coding] thinking ...."):
-        messages = [
-            {"role": "system", "content": read_prompts("code_prompt.yaml")}
-        ] + state["messages"]
-        response = llm.invoke(messages)
-    return {"messages": [response]}
 
 def prompt_llm_web_search(llm,state:State,max_results=10):
     """

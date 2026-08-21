@@ -41,7 +41,6 @@ system_prompt: |
   from the model's general knowledge.
 
   Typical examples include:
-
   - "What does our company policy say about remote work?"
   - "What is our company's vacation policy?"
   - "According to the employee handbook, how many days of leave do I get?"

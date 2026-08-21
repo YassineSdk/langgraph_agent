@@ -1,8 +1,4 @@
 from dotenv import find_dotenv, load_dotenv 
-import uuid
-from rich.console import Console
-from rich.panel import Panel
-from rich.markdown import Markdown
 
 from langchain.chat_models import init_chat_model 
 from langgraph.graph import END, START, StateGraph
@@ -13,15 +9,13 @@ from langgraph.types import interrupt, Command
 from state import IntentClassifier, State
 from nodes import *
 from utils import *
-from cli import show_banner
 
-C = Console()
+
 load_dotenv(find_dotenv(".env"))
 
 
 llm = init_chat_model(
-    "groq:openai/gpt-oss-120b"
-    )
+    "groq:openai/gpt-oss-120b")
 
 TRACING=os.getenv("LANGSMITH_TRACING")
 PROJECT=os.getenv("LANGSMITH_PROJECT")
@@ -32,6 +26,7 @@ def classify_intent(state: State):
                         method="json_schema",
                         strict=True
                         )
+
     result = structured_llm.invoke([
         {
             "role": "system",
@@ -44,7 +39,11 @@ def classify_intent(state: State):
 
     return {"message_intent": result.message_intent}
 
+def route_input(state: State):
 
+    if state.get("filename"):
+        return "RAG"
+    return "classifier"
 
 graph_builder = StateGraph(State)
 graph_builder.add_node("classifier", classify_intent)
@@ -52,9 +51,8 @@ graph_builder.add_node("chat_agent", lambda state: prompt_llm_chat(llm, state))
 graph_builder.add_node("RAG_agent", lambda state: prompt_llm_rag(llm, state))
 graph_builder.add_node("web_search_agent",lambda state: prompt_llm_web_search(llm, state))
 
-graph_builder.add_edge(START, "classifier")
 
-# conditional nodes 
+# conditional Edges 
 
 graph_builder.add_conditional_edges(
     "classifier",
@@ -66,6 +64,16 @@ graph_builder.add_conditional_edges(
     },
 )
 
+graph_builder.add_conditional_edges(
+    START,
+    route_input,
+    {
+        "RAG": "RAG_agent",
+        "classifier": "classifier"
+    }
+    
+)
+
 
 # Nodes
 
@@ -75,45 +83,6 @@ graph_builder.add_edge("web_search_agent",END)
 
 checkpoint = InMemorySaver()
 graph = graph_builder.compile(checkpointer=checkpoint)
-config = {
-    "configurable": {"thread_id": str(uuid.uuid4())}
-}
-
-show_banner()
 
 
-while True:
-    user_input = prompt("> ")
-    if user_input.strip().lower() == "q":
-        C.print("see you soon")
-        break
-
-    response = graph.invoke(
-        {"messages": [{"role": "user", "content": user_input}]},
-        config=config
-    )
-
-    if "__interrupt__" in response:
-        interrupt_data = response["__interrupt__"][0]
-
-        request = interrupt_data.value
-        C.print(
-            Panel(
-                request["message"],
-                title=request["type"]
-            )
-
-        )
-        approvel = prompt("Continue? [y/n] ").lower().strip()
-        response=graph.invoke(
-            Command(resume="yes" if approvel =="y" else "no"),
-            config=config
-        )
-
-    C.print(
-        Markdown
-            (
-            response["messages"][-1].content
-            )
-        )
 

@@ -5,6 +5,7 @@ from pathlib import Path
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.vectorstores import InMemoryVectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyMuPDFLoader
 
 
 
@@ -18,14 +19,18 @@ embeddings = HuggingFaceEmbeddings(
 )
 
 
-def read_knowledge():
+def read_knowledge(filename):
     """
-    this function reads the knowledgebase from a text file and return it's content 
+    this function reads the knowledge base from a text file and return it's content 
     """
-    with open("knowledge.txt","r") as f :
-        knowledge = f.read()
+    loader = PyMuPDFLoader(filename)
 
-        return knowledge
+    documents = loader.load()
+
+    return "\n\n".join(
+        doc.page_content
+        for doc in documents
+    )
 
 
 def read_prompts(prompt_name):
@@ -37,11 +42,11 @@ def read_prompts(prompt_name):
         return prompt['system_prompt']
 
 
-def Retrieve_knowledge(query):
+def Retrieve_knowledge(query,filename):
     """
     this function retrives chunks with high semantic simularity with the a query 
     """
-    raw_doc = read_knowledge()
+    raw_doc = read_knowledge(filename)
 
     # splitting the document into chunks 
     splitter = RecursiveCharacterTextSplitter(
@@ -51,7 +56,7 @@ def Retrieve_knowledge(query):
     documents = splitter.create_documents([raw_doc])
 
     # creating the vectot store 
-    vector_store = InMemoryVectorStore(embedding)
+    vector_store = InMemoryVectorStore(embeddings)
 
     # adding the chunks 
     vector_store.add_documents(documents)
