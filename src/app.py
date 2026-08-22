@@ -15,10 +15,6 @@ async def start():
         cl.context.session.id
     )
 
-    await cl.Message(
-        content="How can i Help You ?"
-    ).send()
-
 
 @cl.on_message
 async def main(message: cl.Message):
