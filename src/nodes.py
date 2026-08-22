@@ -1,61 +1,68 @@
 from state import *
 from utils import *
-from rich.console import Console
+import chainlit as cl
 from langgraph.types import interrupt
 from langchain_core.messages import SystemMessage
 from dotenv import load_dotenv, find_dotenv
 from tavily import TavilyClient
 import os
 
-C = Console()
 
 load_dotenv(find_dotenv(".env"))
 
-def prompt_llm_chat(llm, state: State):
 
-    with C.status("[green][CHAT] thinking ...."):
+async def prompt_llm_chat(llm, state: State):
+
+    async with cl.Step(name="Chat") as step:
+        step.output = "Thinking ..."
 
         messages = [
             {"role": "system", "content": read_prompts("chat_prompt.yaml")}
         ] + state["messages"]
 
-        response = llm.invoke(messages)
+        step.output = "synthesizing ..."
+        response =  llm.invoke(messages)
     return {"messages": [response]}
 
 
-def prompt_llm_rag(llm, state: State):
-    
-    query = state["messages"][-1].content
-    filename = state["filename"]
-    docs = Retrieve_knowledge(query,filename)
+async def prompt_llm_rag(llm, state: State):
+    async with cl.Step(name="RAG") as step:
 
-    context = "\n\n".join(
-        doc.page_content
-        for doc in docs
-    )
+        step.output = "Exploring the context ..."
 
-    messages = [
-        {
-            "role": "system",
-            "content": read_prompts("rag_prompt.yaml")
-        },
-        {
-            "role": "user",
-            "content": f"""
-    Context:
-    {context}
+        query = state["messages"][-1].content
+        filename = state["filename"]
+        docs = Retrieve_knowledge(query,filename)
 
-    Question:
-    {query}
-    """
-        }
-    ]
-    response = llm.invoke(messages)
+        context = "\n\n".join(
+            doc.page_content
+            for doc in docs
+        )
+
+        messages = [
+            {
+                "role": "system",
+                "content": read_prompts("rag_prompt.yaml")
+            },
+            {
+                "role": "user",
+                "content": f"""
+        Context:
+        {context}
+
+        Question:
+        {query}
+        """
+            }
+        ]
+        step.output =" Crafting the response..."
+
+        response =  llm.invoke(messages)
 
     return {"messages": [response]}
 
 
-def prompt_llm_web_search(llm,state:State,max_results=10):
+async def prompt_llm_web_search(llm,state:State,max_results=5):
     """
     this function takes a query and search it in the web via an API called
     tavily , a web search API that returns results
@@ -73,9 +80,11 @@ def prompt_llm_web_search(llm,state:State,max_results=10):
         }
     """
     key = os.getenv("Tavily_APIKEY")
-    opm_query = search_rewriter(llm,state)
-    with C.status(f"[green] searching for {opm_query} ... [green ]") as status:
+    async with cl.Step(name="Websearch") as step:
 
+        step.output = "Gathering fresh insights..."
+
+        opm_query = search_rewriter(llm,state)
         if not opm_query:
             raise ValueError(
                 "the query is empty"
@@ -86,7 +95,7 @@ def prompt_llm_web_search(llm,state:State,max_results=10):
             )
 
         Tav_client = TavilyClient(api_key=key)
-        response = Tav_client.search(
+        response =  Tav_client.search(
             query=opm_query,
             search_depth="advanced",
             max_results=max_results,
@@ -101,9 +110,9 @@ def prompt_llm_web_search(llm,state:State,max_results=10):
             "linkedin.com"
             ]
         )
-        status.update("[yellow]Processing search results...[/yellow]")
+        step.output = "Processing  insights..."
+
         if response is None :
-            C.print("[red] web search ended [red]")
             raise ValueError('the Response is None')
 
         results= {
@@ -127,8 +136,11 @@ def prompt_llm_web_search(llm,state:State,max_results=10):
         """
             }
         ]
-        llm_response = llm.invoke(messages)
-    C.print("[bold green]✓ Web search completed[/bold green]")
+
+        step.output = "Shaping the answer..."
+
+        llm_response =  llm.invoke(messages)
+    
     return {"messages": [llm_response]}
 
 

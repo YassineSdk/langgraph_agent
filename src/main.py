@@ -45,11 +45,20 @@ def route_input(state: State):
         return "RAG"
     return "classifier"
 
+async def chat_node(state):
+    return await prompt_llm_chat(llm, state)
+
+async def rag_node(state):
+    return await prompt_llm_rag(llm, state)
+
+async def web_search_node(state):
+    return await prompt_llm_web_search(llm, state)
+
 graph_builder = StateGraph(State)
 graph_builder.add_node("classifier", classify_intent)
-graph_builder.add_node("chat_agent", lambda state: prompt_llm_chat(llm, state))
-graph_builder.add_node("RAG_agent", lambda state: prompt_llm_rag(llm, state))
-graph_builder.add_node("web_search_agent",lambda state: prompt_llm_web_search(llm, state))
+graph_builder.add_node("chat_agent", chat_node)
+graph_builder.add_node("RAG_agent", rag_node)
+graph_builder.add_node("web_search_agent",web_search_node)
 
 
 # conditional Edges 
